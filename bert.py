@@ -53,8 +53,8 @@ class BertSelfAttention(nn.Module):
     # compute unnormalized sclaed attention scores Q @ K.T / sqrt(attention_head_size)
     # (bs,num_attention_heads,seq_len,attention_head_size) @ (bs,num_attention_heads,attention_head_size,seq_len) = (bs,num_attention_heads,seq_len,seq_len)    
     S = query @ key.transpose(-2,-1) / math.sqrt(attention_head_size)
-    # mask out the pad token (index 0) scores and apply scaling
-    S = S.masked_fill(attention_mask==0, float('-inf')) 
+    # mask out the pad token (non zero index values) scores and apply scaling
+    S = S.masked_fill(attention_mask!=0, float('-inf')) 
     # compute normalized attention scores (by taking softmax over the last dimension)
     S = F.softmax(S, dim=-1)
     # apply dropout to the normalized attention scores
