@@ -59,7 +59,21 @@ class AdamW(Optimizer):
                 #    (incorporating the learning rate again).
 
                 ### TODO
-                raise NotImplementedError
 
+                beta1 = group['betas'][0]
+                beta2 = group['betas'][1]
+                eps = group['eps']
+                weight_decay = group['weight_decay']
+ 
+                state['t'] = state.get('t', 0) + 1
+                # update first and second moments
+                state['mt'] = beta1 * state.get('mt', 0) + (1-beta1) * grad
+                state['vt'] = beta2 * state.get('vt', 0) + (1-beta2) * (grad*grad)
+                # apply bias correction
+                alphat = alpha * math.sqrt(1-beta2**state['t']) / (1-beta1**state['t'])     
+                # update parameters using gradient
+                p.data = p.data - alphat * state['mt'] /(torch.sqrt(state['vt']) + eps)
+                # apply weight decay
+                p.data = (1-alpha*weight_decay) * p.data 
 
         return loss
