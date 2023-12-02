@@ -65,7 +65,7 @@ class BertSelfAttention(nn.Module):
     # then collapse last two dims to get the concateneted output: 
     # (bs,seq_len,num_attention_heads,attention_head_size) --> (bs,seq_len,num_attention_heads*attention_head_size) 
     head_output = head_output.view(bs, seq_len, -1)
-     
+    return head_output 
 
   def forward(self, hidden_states, attention_mask):
     """
@@ -111,7 +111,12 @@ class BertLayer(nn.Module):
     """
     # Hint: Remember that BERT applies to the output of each sub-layer, before it is added to the sub-layer input and normalized 
     ### TODO
-    raise NotImplementedError
+
+    # apply dropout to projected output residual, then add it to input
+    x = input + dropout(dense_layer(output))
+    # then apply layer norm
+    x = ln_layer(x)
+    return x
 
 
   def forward(self, hidden_states, attention_mask):
