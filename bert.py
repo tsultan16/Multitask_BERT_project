@@ -47,8 +47,25 @@ class BertSelfAttention(nn.Module):
     # next, we need to concat multi-heads and recover the original shape [bs, seq_len, num_attention_heads * attention_head_size = hidden_size]
 
     ### TODO
-    raise NotImplementedError
 
+    bs,num_attention_heads,seq_len,attention_head_size = query.size()
+
+    # compute unnormalized attention scores Q @ K.T
+    # (bs,num_attention_heads,seq_len,attention_head_size) @ (bs,num_attention_heads,attention_head_size,seq_len) = (bs,num_attention_heads,seq_len,seq_len)    
+    S = query @ key.transpose(-2,-1)  
+    # mask out the pad token (index 0) scores and apply scaling
+    S = S.masked_fill(attention_mask==0, float('-inf')) * (attention_head_size)**(-0.5)
+    # compute normalized attention scores (by taking softmax over the last dimension)
+    S = F.softmax(S, dim=-1)
+    # compute weighted sum of values
+    head_output = S @ value # (bs,num_attention_heads,seq_len,attention_head_size)   
+    # transpose (bs,num_attention_heads,seq_len,attention_head_size) --> (bs,seq_len,num_attention_heads,attention_head_size) 
+    # since transpose returns a non-contiguous view, we also apply .contiguous() to get a new tensor which si contiguous 
+    head_output = head_output.transpose(1,2).contiguous()
+    # then collapse last two dims to get the concateneted output: 
+    # (bs,seq_len,num_attention_heads,attention_head_size) --> (bs,seq_len,num_attention_heads*attention_head_size) 
+    head_output = head_output.view(bs, seq_len, -1)
+     
 
   def forward(self, hidden_states, attention_mask):
     """
