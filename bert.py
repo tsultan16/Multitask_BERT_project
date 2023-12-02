@@ -50,13 +50,15 @@ class BertSelfAttention(nn.Module):
 
     bs,num_attention_heads,seq_len,attention_head_size = query.size()
 
-    # compute unnormalized attention scores Q @ K.T
+    # compute unnormalized sclaed attention scores Q @ K.T / sqrt(attention_head_size)
     # (bs,num_attention_heads,seq_len,attention_head_size) @ (bs,num_attention_heads,attention_head_size,seq_len) = (bs,num_attention_heads,seq_len,seq_len)    
-    S = query @ key.transpose(-2,-1)  
+    S = query @ key.transpose(-2,-1) / math.sqrt(attention_head_size)
     # mask out the pad token (index 0) scores and apply scaling
-    S = S.masked_fill(attention_mask==0, float('-inf')) * (attention_head_size)**(-0.5)
+    S = S.masked_fill(attention_mask==0, float('-inf')) 
     # compute normalized attention scores (by taking softmax over the last dimension)
     S = F.softmax(S, dim=-1)
+    # apply dropout to the normalized attention scores
+    S = self.dropout(S)
     # compute weighted sum of values
     head_output = S @ value # (bs,num_attention_heads,seq_len,attention_head_size)   
     # transpose (bs,num_attention_heads,seq_len,attention_head_size) --> (bs,seq_len,num_attention_heads,attention_head_size) 
@@ -64,7 +66,7 @@ class BertSelfAttention(nn.Module):
     head_output = head_output.transpose(1,2).contiguous()
     # then collapse last two dims to get the concateneted output: 
     # (bs,seq_len,num_attention_heads,attention_head_size) --> (bs,seq_len,num_attention_heads*attention_head_size) 
-    head_output = head_output.view(bs, seq_len, -1)
+    head_output = head_output.view(bs, seq_len, num_attention_heads*attention_head_size)
     return head_output 
 
   def forward(self, hidden_states, attention_mask):
@@ -132,7 +134,7 @@ class BertLayer(nn.Module):
     ### TODO
     
     # pass hidden_states through multuhead attention layer
-    attn_output = self.self_attention(hidden_states)
+    attn_output = self.self_attention(hidden_states, attention_mask)
     # apply add and norm
     ff_input = self.add_norm(hidden_states, attn_output, self.attention_dense, self.attention_dropout, self.attention_layer_norm)
     # pass through feed forward layer
