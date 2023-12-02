@@ -130,8 +130,16 @@ class BertLayer(nn.Module):
     4. a add-norm that takes the input and output of the feed forward layer
     """
     ### TODO
-    raise NotImplementedError
-
+    
+    # pass hidden_states through multuhead attention layer
+    attn_output = self.self_attention(hidden_states)
+    # apply add and norm
+    ff_input = self.add_norm(hidden_states, attn_output, self.attention_dense, self.attention_dropout, self.attention_layer_norm)
+    # pass through feed forward layer
+    ff_output = self.interm_af(self.interm_dense(ff_input))
+    # apply add and norm
+    output = self.add_norm(ff_input, ff_output, self.out_dense, self.out_dropout, self.out_layer_norm)
+    return output
 
 
 class BertModel(BertPreTrainedModel):
